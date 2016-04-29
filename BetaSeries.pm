@@ -39,31 +39,17 @@ sub new {
 	};
 
 	$this->{CONFIG} 	= BetaSeries::Config->new();
-	$this->{_HEADERS} 	= HTTP::Headers->new();
-	$this->{_UA} 		= LWP::UserAgent->new();
 
 	return $this;
-}
-
-sub defaultHeaders {
-	my ($this) = @_;
-	my $h = &$this->{_HEADERS};
-
-	 $h = HTTP::Headers->new(
-       Date         => 'Thu, 03 Feb 1994 00:00:00 GMT',
-       Content_Type => 'text/html; version=3.2',
-       Content_Base => 'http://www.perl.org/'
-    );
-
-	 return 1;
 }
 
 sub newUserAgent {
 	my ($this) = @_;
 
 	# Create a user agent object
-	my $ua = &$this->{_UA};
+	my $ua = LWP::UserAgent->new();
 	$ua->agent("ADMedia/2.0 ");
+	$this->{_UA} = $ua;
 
 	return 1;
 }
@@ -71,24 +57,34 @@ sub newUserAgent {
 sub newRequest {
 	my ($this) = @_;
 
-	my $ua = $this->{_UA};
-	my $cnf = $this->{CONFIG};
+	$this->newUserAgent();
 
 	# Create a request
-	my $req = HTTP::Request->new(POST => $cnf->{URL});
+	my $req = HTTP::Request->new(POST => $this->{CONFIG}->getOpt("URL"));
 	$req->content_type('application/json');
 	$req->content('query=libwww-perl&mode=dist');
-	$this->{_REQ} = $req;
+	#$this->{_REQ} = $req;
+
+	return $req;
+}
+
+sub execute {
+	my ($this, $req) = @_;
 
 	# Pass request to the user agent and get a response back
-	my $res = $ua->request($req);
+	my $res = $this->{_UA}->request($req);
+
 
 	# Check the outcome of the response
 	if ($res->is_success) {
-			print $res->content;
+		#print $res->content;
+		$this->{_content} = $res->{_content};
+		return 1;
 	}
 	else {
-			print $res->status_line, "\n";
+		$this->{_RES} = $res;
+		print $res->status_line, "\n";
+		return 0;
 	}
 }
 
